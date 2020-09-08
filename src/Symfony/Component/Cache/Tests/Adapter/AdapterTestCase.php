@@ -104,7 +104,7 @@ abstract class AdapterTestCase extends CachePoolTest
             $this->markTestSkipped($this->skippedTests[__FUNCTION__]);
         }
 
-        $cache = $this->createCachePool(0, __FUNCTION__);
+        $cache = $this->createCachePool(0);
 
         $cache->deleteItem('foo');
         $cache->get('foo', function ($item) {
@@ -259,7 +259,7 @@ abstract class AdapterTestCase extends CachePoolTest
             $this->markTestSkipped($this->skippedTests[__FUNCTION__]);
         }
 
-        $cache = $this->createCachePool(0, __FUNCTION__);
+        $cache = $this->createCachePool(0);
         $cache->clear();
 
         $item = $cache->getItem('foobar');

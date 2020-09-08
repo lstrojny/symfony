@@ -61,7 +61,7 @@ class MemcachedAdapter extends AbstractAdapter
             $this->lazyClient = $client;
         }
 
-        parent::__construct($namespace, $defaultLifetime);
+        parent::__construct(rawurlencode($namespace), $defaultLifetime);
         $this->enableVersioning();
         $this->marshaller = $marshaller ?? new DefaultMarshaller();
     }
@@ -244,12 +244,7 @@ class MemcachedAdapter extends AbstractAdapter
             $lifetime += time();
         }
 
-        $encodedValues = [];
-        foreach ($values as $key => $value) {
-            $encodedValues[rawurlencode($key)] = $value;
-        }
-
-        return $this->checkResultCode($this->getClient()->setMulti($encodedValues, $lifetime)) ? $failed : false;
+        return $this->checkResultCode($this->getClient()->setMulti($values, $lifetime)) ? $failed : false;
     }
 
     /**
@@ -258,16 +253,7 @@ class MemcachedAdapter extends AbstractAdapter
     protected function doFetch(array $ids)
     {
         try {
-            $encodedIds = array_map('rawurlencode', $ids);
-
-            $encodedResult = $this->checkResultCode($this->getClient()->getMulti($encodedIds));
-
-            $result = [];
-            foreach ($encodedResult as $key => $value) {
-                $result[rawurldecode($key)] = $this->marshaller->unmarshall($value);
-            }
-
-            return $result;
+            return array_map([$this->marshaller, 'unmarshall'], $this->checkResultCode($this->getClient()->getMulti($ids)));
         } catch (\Error $e) {
             throw new \ErrorException($e->getMessage(), $e->getCode(), \E_ERROR, $e->getFile(), $e->getLine());
         }
@@ -278,7 +264,7 @@ class MemcachedAdapter extends AbstractAdapter
      */
     protected function doHave(string $id)
     {
-        return false !== $this->getClient()->get(rawurlencode($id)) || $this->checkResultCode(\Memcached::RES_SUCCESS === $this->client->getResultCode());
+        return false !== $this->getClient()->get($id) || $this->checkResultCode(\Memcached::RES_SUCCESS === $this->client->getResultCode());
     }
 
     /**
@@ -287,8 +273,7 @@ class MemcachedAdapter extends AbstractAdapter
     protected function doDelete(array $ids)
     {
         $ok = true;
-        $encodedIds = array_map('rawurlencode', $ids);
-        foreach ($this->checkResultCode($this->getClient()->deleteMulti($encodedIds)) as $result) {
+        foreach ($this->checkResultCode($this->getClient()->deleteMulti($ids)) as $result) {
             if (\Memcached::RES_SUCCESS !== $result && \Memcached::RES_NOTFOUND !== $result) {
                 $ok = false;
             }

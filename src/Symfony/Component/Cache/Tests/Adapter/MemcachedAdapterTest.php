@@ -42,11 +42,11 @@ class MemcachedAdapterTest extends AdapterTestCase
         }
     }
 
-    public function createCachePool(int $defaultLifetime = 0): CacheItemPoolInterface
+    public function createCachePool(int $defaultLifetime = 0, string $namespace = null): CacheItemPoolInterface
     {
         $client = $defaultLifetime ? AbstractAdapter::createConnection('memcached://'.getenv('MEMCACHED_HOST')) : self::$client;
 
-        return new MemcachedAdapter($client, str_replace('\\', '.', __CLASS__), $defaultLifetime);
+        return new MemcachedAdapter($client, $namespace ?? str_replace('\\', '.', __CLASS__), $defaultLifetime);
     }
 
     public function testOptions()
@@ -247,5 +247,19 @@ class MemcachedAdapterTest extends AdapterTestCase
             ],
         ];
         $this->assertSame($expected, $client->getServerList());
+    }
+
+    public function testDoubleEncodingBug()
+    {
+        $pool = $this->createCachePool(0, 'ns with spaces');
+
+        // Max ID length diveded by 3 so that rawurlencode would bring us over the limit
+        $key = str_repeat('%', 250 / 3);
+
+        $item = $pool->getItem($key);
+        $item->set('foobar');
+        $pool->save($item);
+        $item = $pool->getItem($key);
+        self::assertTrue($item->isHit());
     }
 }
